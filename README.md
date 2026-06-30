@@ -24,7 +24,7 @@ Thư viện cache asset nhẹ dành cho Roblox executor. Tải asset về một 
 **VI** — Load thư viện bằng `loadstring` từ link raw script của bạn:
 
 ```lua
-local ImageManager = loadstring(game:HttpGet("RAW_LINK_HERE"))()
+local ImageManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/tanhoangviet/Random-Oss/refs/heads/main/ImageManager.lua"))()
 ```
 
 ---
@@ -128,7 +128,7 @@ ImageManager.ClearCache()
 ## Full Example / Ví Dụ Đầy Đủ
 
 ```lua
-local ImageManager = loadstring(game:HttpGet("RAW_LINK_HERE"))()
+local ImageManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/tanhoangviet/Random-Oss/refs/heads/main/ImageManager.lua"))()
 
 ImageManager.Config = {
     Folder = "MyHub",

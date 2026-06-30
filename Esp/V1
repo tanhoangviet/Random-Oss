@@ -1,0 +1,199 @@
+local cloneref = cloneref or function(o) return o end
+
+local Players = cloneref(game:GetService("Players"))
+local RunService = cloneref(game:GetService("RunService"))
+
+local Player = cloneref(Players.LocalPlayer)
+local Camera = cloneref(workspace.CurrentCamera)
+
+local Root = Instance.new("Folder")
+Root.Name = "BoxHandleESP"
+Root.Parent = Camera
+
+local ESP = {}
+ESP.Objects = {}
+
+local function GetTargetBox(object)
+	if object:IsA("Model") then
+		local cf, size = object:GetBoundingBox()
+		return cf, size
+	end
+
+	if object:IsA("BasePart") then
+		return object.CFrame, object.Size
+	end
+
+	local part = object:FindFirstChildWhichIsA("BasePart", true)
+	if part then
+		return part.CFrame, part.Size
+	end
+end
+
+local function CreateProxy(name)
+	local proxy = Instance.new("Part")
+	proxy.Name = name .. "_ESPProxy"
+	proxy.Anchored = true
+	proxy.CanCollide = false
+	proxy.CanTouch = false
+	proxy.CanQuery = false
+	proxy.Transparency = 1
+	proxy.Size = Vector3.new(1, 1, 1)
+	proxy.Parent = Root
+
+	return proxy
+end
+
+function ESP:Add(object, config)
+	if not object then return end
+	if self.Objects[object] then
+		return self.Objects[object]
+	end
+
+	config = config or {}
+
+	local title = config.Title or object.Name
+	local color = config.Color or Color3.fromRGB(0, 255, 255)
+	local transparency = config.Transparency or 0.55
+	local alwaysOnTop = config.AlwaysOnTop
+	local titleOffset = config.TitleOffset or 2
+	local zIndex = config.ZIndex or 10
+
+	if alwaysOnTop == nil then
+		alwaysOnTop = true
+	end
+
+	local cf, size = GetTargetBox(object)
+	if not cf or not size then return end
+
+	local proxy = CreateProxy(object.Name)
+	proxy.CFrame = cf
+	proxy.Size = size
+
+	local box = Instance.new("BoxHandleAdornment")
+	box.Name = "ESP_Box"
+	box.Adornee = proxy
+	box.Size = size
+	box.Color3 = color
+	box.Transparency = transparency
+	box.AlwaysOnTop = alwaysOnTop
+	box.ZIndex = zIndex
+	box.Parent = Root
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "ESP_Title"
+	billboard.Adornee = proxy
+	billboard.AlwaysOnTop = alwaysOnTop
+	billboard.Size = UDim2.fromOffset(180, 35)
+	billboard.StudsOffset = Vector3.new(0, size.Y / 2 + titleOffset, 0)
+	billboard.Parent = Root
+
+	local text = Instance.new("TextLabel")
+	text.Name = "Text"
+	text.BackgroundTransparency = 1
+	text.Size = UDim2.fromScale(1, 1)
+	text.Text = title
+	text.TextColor3 = color
+	text.TextStrokeTransparency = 0.25
+	text.TextScaled = true
+	text.Font = Enum.Font.GothamBold
+	text.Parent = billboard
+
+	local data = {
+		Object = object,
+		Proxy = proxy,
+		Box = box,
+		Billboard = billboard,
+		Text = text,
+		Connection = nil
+	}
+
+	data.Connection = RunService.RenderStepped:Connect(function()
+		if not object or not object.Parent then
+			ESP:Remove(object)
+			return
+		end
+
+		local newCf, newSize = GetTargetBox(object)
+		if not newCf or not newSize then
+			return
+		end
+
+		proxy.CFrame = newCf
+		proxy.Size = newSize
+		box.Size = newSize
+		billboard.StudsOffset = Vector3.new(0, newSize.Y / 2 + titleOffset, 0)
+	end)
+
+	self.Objects[object] = data
+	return data
+end
+
+function ESP:AddMany(objects, config)
+	local list = {}
+
+	for _, object in ipairs(objects) do
+		local data = self:Add(object, config)
+		if data then
+			table.insert(list, data)
+		end
+	end
+
+	return list
+end
+
+function ESP:SetTitle(object, title)
+	local data = self.Objects[object]
+	if data and data.Text then
+		data.Text.Text = title
+	end
+end
+
+function ESP:SetColor(object, color)
+	local data = self.Objects[object]
+	if not data then return end
+
+	if data.Box then
+		data.Box.Color3 = color
+	end
+
+	if data.Text then
+		data.Text.TextColor3 = color
+	end
+end
+
+function ESP:Remove(object)
+	local data = self.Objects[object]
+	if not data then return end
+
+	if data.Connection then
+		data.Connection:Disconnect()
+	end
+
+	if data.Box then
+		data.Box:Destroy()
+	end
+
+	if data.Billboard then
+		data.Billboard:Destroy()
+	end
+
+	if data.Proxy then
+		data.Proxy:Destroy()
+	end
+
+	self.Objects[object] = nil
+end
+
+function ESP:RemoveData(data)
+	if data and data.Object then
+		self:Remove(data.Object)
+	end
+end
+
+function ESP:RemoveAll()
+	for object in pairs(self.Objects) do
+		self:Remove(object)
+	end
+end
+
+return ESP
